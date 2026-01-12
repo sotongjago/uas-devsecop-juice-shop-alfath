@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  juice-shop:
+    image: bkimminich/juice-shop
+    container_name: juice-shop
+    environment:
+      - PROMETHEUS_METRICS=true
+    ports:
+      - "3000:3000"
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - juice-shop
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
