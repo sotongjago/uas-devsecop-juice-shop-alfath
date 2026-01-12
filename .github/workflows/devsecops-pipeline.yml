@@ -1,22 +1,54 @@
-name: DevSecOps Pipeline
+name: DevSecOps Pipeline - Tahap 3
 
 on: [push]
 
 jobs:
-  security:
+  devsecops:
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
 
-    - name: SAST
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # =========================
+    # SAST
+    # =========================
+    - name: SAST - npm audit
       run: npm audit --audit-level=high || true
 
-    - name: Build Image
+    # =========================
+    # SCA
+    # =========================
+    - name: SCA - Trivy Filesystem
+      uses: aquasecurity/trivy-action@0.14.0
+      with:
+        scan-type: fs
+        severity: HIGH,CRITICAL
+      continue-on-error: true
+
+    # =========================
+    # Build
+    # =========================
+    - name: Build Docker Image
       run: docker build -t juice-shop .
 
-    - name: Container Scan
-      run: trivy image juice-shop
+    # =========================
+    # Container Scan
+    # =========================
+    - name: Container Scan - Trivy Image
+      uses: aquasecurity/trivy-action@0.14.0
+      with:
+        image-ref: juice-shop
+        severity: HIGH,CRITICAL
+      continue-on-error: true
 
-    - name: DAST
-      run: docker run -t owasp/zap2docker-stable zap-baseline.py \
-           -t http://localhost:3000
+    # =========================
+    # DAST
+    # =========================
+    - name: Run Juice Shop Container
+      run: docker run -d -p 3000:3000 bkimminich/juice-shop
+
+    - name: DAST - OWASP ZAP
+      run: |
+        docker run -t owasp/zap2docker-stable zap-baseline.py \
+        -t http://host.docker.internal:3000 || true
